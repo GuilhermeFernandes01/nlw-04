@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useState } from 'react';
+import { createContext, ReactNode, useEffect, useState } from 'react';
 import challanges from '../../challenges.json';
 
 interface Challange {
@@ -16,6 +16,7 @@ interface ChallangesContextData {
     levelUp: () => void;
     startNewChallange: () => void;
     resetChallange: () => void;
+    completeChallange: () => void;
 }
 
 interface ChallangesProviderProps {
@@ -32,6 +33,10 @@ export function ChallangesProvider({ children }: ChallangesProviderProps) {
 
     const experienceToNextLevel = Math.pow((level + 1) * 4, 2);
 
+    useEffect(() => {
+        Notification.requestPermission();
+    }, []);
+
     function levelUp() {
         setLevel(level + 1);
     }
@@ -41,10 +46,36 @@ export function ChallangesProvider({ children }: ChallangesProviderProps) {
         const challange = challanges[randomChallangeIndex];
 
         setActiveChallange(challange);
+
+        if (Notification.permission === 'granted') {
+            new Audio('/notification.mp3').play();
+            new Notification('Novo desafio 🎉', {
+                body: `Valendo ${challange.amount} xp!`,
+            });
+        }
     }
 
     function resetChallange() {
         setActiveChallange(null);
+    }
+
+    function completeChallange() {
+        if (!activeChallange) {
+            return;
+        }
+
+        const { amount } = activeChallange;
+
+        let finalExperience = currentExperience + amount;
+
+        if (finalExperience >= experienceToNextLevel) {
+            finalExperience = finalExperience - experienceToNextLevel;
+            levelUp();
+        }
+
+        setCurrentExperience(finalExperience);
+        setActiveChallange(null);
+        setChallangesCompleted(challangesCompleted + 1);
     }
 
     return (
@@ -57,6 +88,7 @@ export function ChallangesProvider({ children }: ChallangesProviderProps) {
             levelUp,
             startNewChallange,
             resetChallange,
+            completeChallange,
         }}>
             { children }
         </ChallangesContext.Provider>
